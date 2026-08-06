@@ -13,7 +13,7 @@ This repository is an **Arduino + MATLAB** thermal-camera project for the Melexi
 
 - [ ] Use English identifiers, comments, and UI strings.
 - [ ] Put sensor logic in `firmware/lib/MLX90620`; keep examples thin.
-- [ ] Build with `pio run -e realtime -e scan` (or `make build`).
+- [ ] Build with `make build` (or `pio run -d firmware/examples/realtime`).
 - [ ] Do not invent hardware capture results or edit demo images to fake heatmaps.
 - [ ] Preserve the serial framing contract documented in `BUILD.md` unless intentionally versioned.
 - [ ] Do not commit `.pio/`, MATLAB `*.asv`, or OS junk (`Thumbs.db`).

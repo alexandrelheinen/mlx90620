@@ -14,11 +14,11 @@ Arduino IDE remains supported: copy `firmware/lib/MLX90620` into your libraries 
 
 ## Firmware (PlatformIO)
 
-From the repository root:
+Each example is its own PlatformIO project (so the `.ino` can sit at the source root):
 
 ```bash
-pio run -e realtime
-pio run -e scan
+pio run -d firmware/examples/realtime
+pio run -d firmware/examples/scan
 # or
 make build
 ```
@@ -26,11 +26,11 @@ make build
 Upload (with the Uno connected):
 
 ```bash
-pio run -e realtime -t upload
-pio device monitor -b 9600
+pio run -d firmware/examples/realtime -t upload
+pio device monitor -d firmware/examples/realtime -b 9600
 ```
 
-Build products land under `.pio/build/<env>/` (`firmware.hex`, `firmware.elf`). CI uploads those hex files plus a size report as workflow artifacts.
+Build products land under `firmware/examples/<name>/.pio/build/uno/` (`firmware.hex`, `firmware.elf`). CI collects them into `artifacts/` and uploads the hex files plus a size report.
 
 ## MATLAB
 
