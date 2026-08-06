@@ -1,14 +1,67 @@
-# projet-conception-supelec
-**Projet de Conception Supélec**  
-*livrable juin 2015*  
-**Binôme 66 :** Alexandre Loeblein Heinen | Clyvian Ribeiro Borges
+# MLX90620 Thermal Camera
 
-Ce projet a été développé dans le cadre du cursus d'ingénieur Supélec entre les mois d'avril et juin 2015. Il s'agit d'une interface entre MATLAB et Arduino qui permet le balayage des servos et la lectures des températures à partir du capteur optique MLX90620.
+Arduino Uno firmware and MATLAB GUIs for the Melexis **MLX90620** 16×4 infrared array.
 
-Le principal apport de ce projet c'est la bibliothèque *MLX90620.h* (`arduino/libraries/MLX90620`) qui fournit des fonctions pour la mise en fonctionnement du capteur MLX90620 à partir du microcontrôleur Arduino (dans le projet on a employé la version Uno). MLX90620.h utilise la bibliothèque [I2Cmaster] (https://github.com/DSSCircuits/I2C-Master-Library) qui n'est pas native de l'IDE Arduino et qui a été donc ajoutée aux fichiers du projet.
+This project was carried out as part of the Supélec engineering curriculum (*Projet de Conception*, Sequence 8) between April and June 2015 by **Alexandre Loeblein Heinen** and **Clyvian Ribeiro Borges** (Binôme A6.66). In 2026 the tree is being modernized with a coherent library API, PlatformIO builds, and CI — see [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md).
 
-Si vous utilisez l'[IDE Arduino] (https://www.arduino.cc/en/Main/Software), il vous faudra copier le dossier `MLX90620` dans le dossier des blibliothèques d'Arduino, normalement trouvé dans `arduino_installation_path\libraries\` ou l'installer par le gestionnaire de bibliothèques de l'IDE.
+## Features
 
-## Informations complémentaires
+- Object-oriented **MLX90620** Arduino library (EEPROM calibration, ambient/object temperature, serial framing)
+- **Realtime** sketch: stream 64 temperatures/frame at a configurable refresh rate
+- **Scan** sketch: dual-servo mosaic with frame markers for MATLAB reconstruction
+- MATLAB GUIDE interfaces for live display with scale + median filtering
 
-Pour les références et informations générales sur son développement de ce projet, merci de regarder le rapport final [`rapport.pdf`](https://github.com/alexandrelheinen/projet-conception-supelec/blob/master/rapport.pdf) et pour sa mise en fonctionnement, le fichier [`mode_demploi.pdf`](https://github.com/alexandrelheinen/projet-conception-supelec/blob/master/mode_demploi.pdf) vous fournira ce qu'il vous faut.
+## Requirements
+
+- Arduino Uno + MLX90620 on I2C
+- [PlatformIO Core](https://platformio.org/) (recommended) or Arduino IDE
+- MATLAB with Image Processing Toolbox (for the host UIs)
+
+## Quick start
+
+```bash
+# Compile both firmware examples
+pio run -e realtime -e scan
+# or: make build
+```
+
+```matlab
+cd matlab
+setupPaths
+% then open realtime/interface.m or scan/interface.m
+```
+
+Full wiring, upload, and serial-protocol details: [docs/BUILD.md](docs/BUILD.md).
+
+## Repository layout
+
+```text
+firmware/lib/MLX90620/     First-party sensor library
+firmware/external/         Vendored I2Cmaster (GPL-3)
+firmware/examples/         realtime and scan sketches
+matlab/+mlx90620/          Shared MATLAB helpers
+matlab/realtime/           Realtime GUIDE UI
+matlab/scan/               Scan / mosaic GUIDE UI
+docs/                      Markdown docs + archived French PDFs
+```
+
+## Documentation
+
+| File | Purpose |
+|------|---------|
+| [README.md](README.md) | Quick start (this file) |
+| [docs/BUILD.md](docs/BUILD.md) | Build, upload, serial protocol |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Code standards |
+| [docs/AGENTS.md](docs/AGENTS.md) | Checklist for AI coding assistants |
+| [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) | Modernization roadmap |
+| [docs/REPORT.md](docs/REPORT.md) | Project report (English; in progress) |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Operator guide (English; in progress) |
+| [docs/archive/](docs/archive/) | Original French PDF report and user guide |
+
+## Continuous integration
+
+GitHub Actions builds both PlatformIO environments and uploads `.hex` artifacts plus an AVR size report on every push and pull request to `master`.
+
+## License
+
+This project is released under the [GNU GPL v3](LICENSE). The vendored I2C master library is also GPL-3; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
