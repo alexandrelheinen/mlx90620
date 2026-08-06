@@ -34,15 +34,31 @@ Build products land under `firmware/examples/<name>/.pio/build/uno/` (`firmware.
 
 ## MATLAB
 
+Requires **R2019b+** (`serialport`). Image Processing Toolbox is needed for `medfilt2`.
+
 ```matlab
 cd matlab
 setupPaths
-realtime.interface   % or: scan.interface — GUIDE entry is interface.m inside each folder
+% open realtime/interface.m or scan/interface.m
 ```
 
-Or open `matlab/realtime/interface.m` / `matlab/scan/interface.m` after `setupPaths`.
+### Serial port
 
-Default serial port in scripts is `COM3` (Windows). Change the `com` variable for your OS (`/dev/ttyACM0` on many Linux Unos).
+| Setting | How |
+|---------|-----|
+| Default Windows | `COM3` |
+| Default Linux/macOS | `/dev/ttyACM0` |
+| Override | `setenv('MLX90620_PORT','…')` |
+
+Helpers: `mlx90620.serialSettings`, `mlx90620.openSerial`, `mlx90620.readNumericLine`.
+
+### Demo mode (no Arduino)
+
+```matlab
+setenv('MLX90620_DEMO','1')
+```
+
+Acquisition loops feed synthetic frames from `mlx90620.demoFrame` so the GUIDE UIs can be exercised without hardware.
 
 ## Serial protocol (stable contract)
 

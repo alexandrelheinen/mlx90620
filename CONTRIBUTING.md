@@ -35,9 +35,11 @@ See [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) for the full modern
 ## MATLAB
 
 - Keep GUIDE `.fig` files working; put shared helpers in `matlab/+mlx90620/`.
-- Prefer `serialport` for new serial code (legacy `serial` may remain until that migration lands).
+- Use **`serialport`** via `mlx90620.openSerial` (R2019b+). Do not reintroduce `serial`/`fopen`.
+- Port and demo flags: `MLX90620_PORT`, `MLX90620_DEMO` (see `docs/BUILD.md`).
 - Run `matlab/setupPaths.m` (or rely on UI openers that add the package root) before launching interfaces.
 - Image Processing Toolbox is required for `medfilt2`.
+- Style-check helpers/scripts with MISS_HIT (`make lint`); GUIDE-generated `interface.m` is excluded.
 
 ## Git workflow
 
@@ -46,8 +48,19 @@ See [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) for the full modern
 3. Keep commits logically separated (docs, firmware fix, layout, CI).
 4. Open a pull request against `master` and ensure CI is green.
 
+## Formatting
+
+```bash
+make format    # clang-format + mh_style --fix
+make lint      # check-only (CI)
+```
+
+Do not format vendored `firmware/external/I2Cmaster` unless intentionally updating that dependency.
+
 ## Testing expectations
 
 - Firmware: `make build` (PlatformIO per-example projects under `firmware/examples/`).
+- Style: `make lint`.
 - Optional: inspect uploaded CI artifacts (`.hex` + size report) on the workflow run.
+- MATLAB demo mode: `setenv('MLX90620_DEMO','1')` then open a GUIDE UI.
 - Hardware-in-the-loop validation is encouraged when an MLX90620 is available but is not required for CI.
