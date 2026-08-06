@@ -419,8 +419,21 @@ The modernization matches the bar set by super-sprint and vector-view when:
 | 2 | Fix `MLX90620` library + examples so they compile | 1 | Done |
 | 3 | Reorganize tree + English renames | 2 | Done |
 | 4 | PlatformIO + GitHub Actions CI | 3 | Done |
-| 5 | clang-format / MISS_HIT bulk apply | 4 | Pending |
-| 6 | MATLAB `serialport` migration (package already extracted) | 3+ | Pending |
-| 7 | English REPORT + USER_GUIDE + polished README | 1 (can parallelize after PDF extract) | Pending |
+| 5 | clang-format / MISS_HIT bulk apply | 4 | Done |
+| 6 | MATLAB `serialport` migration (package already extracted) | 3+ | Done |
+| 7 | English REPORT + USER_GUIDE + polished README | 1 (can parallelize after PDF extract) | Done |
 
-Phases 0–4 from §6 are implemented on the modernization branch: scaffolding, library/sketch correctness, `firmware/` + `matlab/` layout, and PlatformIO CI that uploads `firmware-uno` artifacts (`*.hex`, `*.elf`, size report, hex preview).
+### Completed through the second modernization PR
+
+- Phases 0–5 from §6 (scaffolding through documentation completion)
+- Tooling: `.clang-format`, `miss_hit.cfg`, `scripts/format.sh`, `scripts/lint.sh`, CI lint job
+- MATLAB: `serialport` helpers, `MLX90620_PORT` / `MLX90620_DEMO`, English UI strings
+- Docs: English `REPORT.md`, `USER_GUIDE.md`, README architecture diagram
+- Light hardening: host-side `tests/test_scan_marker.cpp` (`make test-host`)
+
+### Still optional (Phase 6)
+
+- Broader host-side tests for TA/TO maths with EEPROM fixtures
+- `clang-tidy` in CI
+- Tag `release.yml` publishing hex + library zip
+- Migrate I2C from vendored GPL `I2Cmaster` to Arduino `Wire` (would reopen MIT-friendly licensing)
