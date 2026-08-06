@@ -437,3 +437,7 @@ The modernization matches the bar set by super-sprint and vector-view when:
 - `clang-tidy` in CI
 - Tag `release.yml` publishing hex + library zip
 - Migrate I2C from vendored GPL `I2Cmaster` to Arduino `Wire` (would reopen MIT-friendly licensing)
+
+### Follow-on: MATLAB → Python host migration
+
+See **[python-migration-analysis.md](python-migration-analysis.md)**. Recommendation: replace the GUIDE/MATLAB host with a Python package (PySide6 + pyqtgraph, Black/Ruff, pytest), keep the Arduino serial contract, archive `matlab/` after parity.

@@ -72,6 +72,7 @@ scripts/                   format, lint, artifact helpers
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Code standards |
 | [docs/AGENTS.md](docs/AGENTS.md) | Checklist for AI coding assistants |
 | [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) | Modernization roadmap |
+| [docs/python-migration-analysis.md](docs/python-migration-analysis.md) | Proposal to replace MATLAB with Python |
 | [docs/archive/](docs/archive/) | Original French PDF report and user guide |
 
 ## Continuous integration
