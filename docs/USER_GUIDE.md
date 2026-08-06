@@ -73,8 +73,8 @@ mlx90620 capture --mode scan --demo --frames 4 --output mosaic.png
 
 ## Filter parameters
 
-Typical values from the 2015 evaluation: expansion \(n = 4\) and median radius \(m = 4\)
-(sometimes \(m = 6\) for demo figures). Adjust live from the GUI spin boxes.
+Typical values from the 2015 evaluation: expansion $n = 4$ and median radius $m = 4$
+(sometimes $m = 6$ for demo figures). Adjust live from the GUI spin boxes.
 
 ## Important notes
 
