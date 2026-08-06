@@ -1,70 +1,83 @@
 # User guide (English)
 
-> Translation of the 2015 French operator note [`docs/archive/mode_demploi.pdf`](archive/mode_demploi.pdf),
-> updated for the current repository paths and tooling.
+> Updated for the Python host (2026). The 2015 French operator note is preserved at
+> [`docs/archive/mode_demploi.pdf`](archive/mode_demploi.pdf).
 
 ## Prerequisites
 
 1. Build and upload firmware with PlatformIO (see [`BUILD.md`](BUILD.md)):
    - Realtime: `pio run -d firmware/examples/realtime -t upload`
    - Scan: `pio run -d firmware/examples/scan -t upload`
-2. MATLAB with Image Processing Toolbox.
-3. From the `matlab/` folder, run `setupPaths` (or open a UI — openers add the package root).
+2. Install the Python host:
 
-Arduino IDE users: copy `firmware/lib/MLX90620` and `firmware/external/I2Cmaster` into the
-IDE libraries folder (historically `C:/Program Files/Arduino/libraries` on Windows).
+```bash
+cd python
+python -m pip install -e ".[gui]"
+```
 
 ## Realtime mode
 
 1. Upload the **realtime** sketch to the Uno.  
-2. Open `matlab/realtime/interface.m` (GUIDE UI; companion `interface.fig`).  
-3. Set **Expansion factor** and **Median radius** for filtering.  
-4. Press **Start** (`Marche` on the original French figure) to open the serial link and
-   display frames: left = raw temperatures, right = filtered.  
-5. Press **Stop** (`Arrêt`) before closing the window.
+2. Launch the GUI:
+
+```bash
+export MLX90620_PORT=/dev/ttyACM0   # or COM3 on Windows
+mlx90620 gui --mode realtime
+```
+
+3. Set **Expansion n** and **Median radius** for filtering.  
+4. Press **Start** to open the serial link. Left = raw temperatures, right = filtered.  
+5. Press **Stop** (or close the window) to end acquisition — the port is released cleanly.
 
 ## Scan mode (balayage)
 
 1. Upload the **scan** sketch.  
-2. Open `matlab/scan/interface.m`.  
-3. The UI is equivalent to realtime, plus a label showing the current mosaic tile
-   coordinates (`row x col`).  
-4. Start/Stop behave as in realtime.
+2. Run:
+
+```bash
+mlx90620 gui --mode scan
+```
+
+3. The tile label shows the current mosaic coordinates (`row x col`). The dual heatmaps
+   update with the latest tile; when a full mosaic is assembled, the raw view shows the
+   stitched image.
 
 ## Serial port
-
-Default ports come from `mlx90620.serialSettings`:
 
 | OS | Default |
 |----|---------|
 | Windows | `COM3` |
 | Linux / macOS | `/dev/ttyACM0` |
 
-Override without editing scripts:
+Override:
 
-```matlab
-setenv('MLX90620_PORT', 'COM5')          % Windows example
-setenv('MLX90620_PORT', '/dev/ttyUSB0')  % Linux example
+```bash
+export MLX90620_PORT=COM5
+# or
+mlx90620 gui --port /dev/ttyUSB0
 ```
 
 ## Demo mode (no hardware)
 
-```matlab
-setenv('MLX90620_DEMO', '1')
+```bash
+mlx90620 gui --demo
+mlx90620 capture --demo --frames 1 --output /tmp/frame.png
 ```
 
-Start the UI as usual; acquisition loops feed synthetic frames so filtering/UI can be
-exercised without an Arduino.
+## CLI capture
 
-## Important warnings (from the original guide)
-
-1. **Never close the GUIDE window before Stop.** Closing while the serial session is
-   active can leave the port busy until MATLAB is restarted and the board is reset.  
-2. Prefer Stop → then close.  
-3. If the wrong COM port is selected, set `MLX90620_PORT` (or historically edit the
-   port string in `cameraProcess.m` — no longer required).
+```bash
+mlx90620 capture --mode realtime --frames 10
+mlx90620 capture --mode scan --demo --frames 4 --output mosaic.png
+```
 
 ## Filter parameters
 
-Typical values used during the 2015 evaluation were expansion \(n = 4\) and median
-radius \(m = 4\) (sometimes \(m = 6\) for demo figures). Adjust live from the UI fields.
+Typical values from the 2015 evaluation: expansion \(n = 4\) and median radius \(m = 4\)
+(sometimes \(m = 6\) for demo figures). Adjust live from the GUI spin boxes.
+
+## Important notes
+
+1. Always **Stop** or close the window to release the serial port (the Python worker is
+   designed for this; the old MATLAB GUIDE failure mode no longer applies).  
+2. Historical MATLAB sources are archived under [`docs/archive/matlab-2015/`](archive/matlab-2015/).
