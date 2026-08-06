@@ -50,22 +50,26 @@ function interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to interface (see VARARGIN)
+
+% Ensure matlab/+mlx90620 is on the path when the UI is opened directly.
+addpath(fileparts(fileparts(mfilename('fullpath'))));
+
 clc;
 image = [];
-for k=1:16
-    image = [image; [25, 30, 40, 35]*sin(k*20)];
+for k = 1:16
+  image = [image; (1:16) * sin(k * 0.6)];
 end
 axes(handles.axes1);
-imagesc(image); % Dessin des donnés de la matrice (chaque fois)
+imagesc(image);
 colorbar;
 axes(handles.axes2);
-n = round(str2num(get(handles.edit1,'String')));
-r = round(str2num(get(handles.edit2,'String')));
-image = imageProcess(image, n, r);
-imagesc(image); % Dessin des donnés de la matrice (chaque fois)
-colorbar; % Ajoute une barre pour montrer la température
+n = round(str2double(get(handles.edit1, 'String')));
+r = round(str2double(get(handles.edit2, 'String')));
+image = mlx90620.imageProcess(image, n, r);
+imagesc(image);
+colorbar;
 
-set(handles.status,'String','Pour commencer la lecture, appuyez sur le button ´Marche´.');
+set(handles.status, 'String', 'Press Start to begin acquisition.');
 
 % Choose default command line output for interface
 handles.output = hObject;
@@ -89,19 +93,18 @@ varargout{1} = handles.output;
 % --- Executes on button press in pushbutton1.
 % --- Starts the reading loop
 function pushbutton1_Callback(hObject, eventdata, handles)
-set(handles.status,'String','Lecture en cours... Appuyez sur ´Arrêt´ avant fermer la fenêtre.');
-set(handles.pushbutton1,'Enable','off');
-set(handles.pushbutton2,'Enable','on');
-camera_process;
-set(handles.status,'String','Système arrêté');
+set(handles.status, 'String', 'Acquiring... Press Stop before closing the window.');
+set(handles.pushbutton1, 'Enable', 'off');
+set(handles.pushbutton2, 'Enable', 'on');
+cameraProcess;
+set(handles.status, 'String', 'System stopped');
 
 % --- Executes on button press in pushbutton2.
-% --- The pushbutton2 is used to stop the lecture, so while it's enable,
-% --- the main program will continue to read the sensor
+% --- While enabled, cameraProcess keeps reading the sensor.
 function pushbutton2_Callback(hObject, eventdata, handles)
-set(handles.status,'String','Camera isn´t running...');
-set(handles.pushbutton2,'Enable','off');
-set(handles.pushbutton1,'Enable','on');
+set(handles.status, 'String', 'Camera is not running...');
+set(handles.pushbutton2, 'Enable', 'off');
+set(handles.pushbutton1, 'Enable', 'on');
 % hObject    handle to pushbutton2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
