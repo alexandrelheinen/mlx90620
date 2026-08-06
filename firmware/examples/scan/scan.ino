@@ -51,8 +51,7 @@ void loop() {
 
   sensor.update();
   // MATLAB uses rowIndex = tiltStepIndex, colIndex = panStepIndex.
-  sensor.transmitScanFrame(static_cast<uint8_t>(tiltStepIndex),
-                           static_cast<uint8_t>(panStepIndex));
+  sensor.transmitScanFrame(static_cast<uint8_t>(tiltStepIndex), static_cast<uint8_t>(panStepIndex));
 
   panStepIndex++;
   if (panStepIndex >= kPanSteps) {

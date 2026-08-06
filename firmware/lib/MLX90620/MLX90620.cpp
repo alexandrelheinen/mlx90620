@@ -12,21 +12,9 @@
 #include <math.h>
 
 MLX90620::MLX90620(int refreshRateHz)
-    : configReg_(0),
-      compensationPixel_(0),
-      ptat_(0),
-      ambientTemperatureC_(0.0f),
-      aCp_(0),
-      bCp_(0),
-      bIScale_(0),
-      emissivity_(1.0f),
-      kT1_(0.0f),
-      kT2_(0.0f),
-      vTh_(0),
-      tgc_(0),
-      refreshRateHz_(refreshRateHz),
-      frameCounter_(0),
-      begun_(false) {
+    : configReg_(0), compensationPixel_(0), ptat_(0), ambientTemperatureC_(0.0f), aCp_(0), bCp_(0),
+      bIScale_(0), emissivity_(1.0f), kT1_(0.0f), kT2_(0.0f), vTh_(0), tgc_(0),
+      refreshRateHz_(refreshRateHz), frameCounter_(0), begun_(false) {
   for (uint16_t i = 0; i < kEepromSize; ++i) {
     eepromData_[i] = 0;
   }
@@ -76,7 +64,8 @@ void MLX90620::update() {
 
 void MLX90620::loop() {
   // Pace acquisitions roughly to the configured refresh rate.
-  delay(static_cast<unsigned long>(1000.0f / static_cast<float>(refreshRateHz_ > 0 ? refreshRateHz_ : 1)));
+  delay(static_cast<unsigned long>(1000.0f /
+                                   static_cast<float>(refreshRateHz_ > 0 ? refreshRateHz_ : 1)));
   update();
   transmitTemperatures();
 }
@@ -128,9 +117,8 @@ void MLX90620::calculateTO() {
   const float ta = ambientTemperatureC_;
   const float scale = pow(2.0f, static_cast<float>(bIScale_));
   // Compensation pixel removes the temperature-gradient contribution (TGC path).
-  const float vComp =
-      static_cast<float>(compensationPixel_) -
-      (static_cast<float>(aCp_) + static_cast<float>(bCp_) / scale * (ta - 25.0f));
+  const float vComp = static_cast<float>(compensationPixel_) -
+                      (static_cast<float>(aCp_) + static_cast<float>(bCp_) / scale * (ta - 25.0f));
 
   for (uint8_t i = 0; i < kPixelCount; ++i) {
     float sample =
@@ -139,8 +127,7 @@ void MLX90620::calculateTO() {
     sample = sample - static_cast<float>(tgc_) / 32.0f * vComp;
     sample = sample / emissivity_;
     // Planck-style inversion using per-pixel alpha_ij (datasheet object formula).
-    objectTemperaturesC_[i] =
-        sqrt(sqrt(sample / alphaIj_[i] + pow(ta + 273.15f, 4.0f))) - 273.15f;
+    objectTemperaturesC_[i] = sqrt(sqrt(sample / alphaIj_[i] + pow(ta + 273.15f, 4.0f))) - 273.15f;
   }
 }
 
@@ -156,30 +143,30 @@ void MLX90620::checkConfigReg() {
 void MLX90620::configure(int refreshRateHz) {
   uint8_t hzLsb;
   switch (refreshRateHz) {
-    case 0:
-      hzLsb = 0x0F;  // 0.5 Hz
-      break;
-    case 1:
-      hzLsb = 0x0E;
-      break;
-    case 2:
-      hzLsb = 0x0D;
-      break;
-    case 4:
-      hzLsb = 0x0C;
-      break;
-    case 8:
-      hzLsb = 0x0B;
-      break;
-    case 16:
-      hzLsb = 0x0A;
-      break;
-    case 32:
-      hzLsb = 0x09;
-      break;
-    default:
-      hzLsb = 0x0E;
-      break;
+  case 0:
+    hzLsb = 0x0F; // 0.5 Hz
+    break;
+  case 1:
+    hzLsb = 0x0E;
+    break;
+  case 2:
+    hzLsb = 0x0D;
+    break;
+  case 4:
+    hzLsb = 0x0C;
+    break;
+  case 8:
+    hzLsb = 0x0B;
+    break;
+  case 16:
+    hzLsb = 0x0A;
+    break;
+  case 32:
+    hzLsb = 0x09;
+    break;
+  default:
+    hzLsb = 0x0E;
+    break;
   }
 
   i2c_start_wait(kAddrSensorWrite);
@@ -289,8 +276,8 @@ void MLX90620::initialiseCalibration() {
       32768.0f;
 
   for (uint8_t i = 0; i < kPixelCount; ++i) {
-    aIj_[i] = signExtend8(eepromData_[i]);            // offsets at 0x00
-    bIj_[i] = signExtend8(eepromData_[0x40 + i]);     // slopes at 0x40
+    aIj_[i] = signExtend8(eepromData_[i]);        // offsets at 0x00
+    bIj_[i] = signExtend8(eepromData_[0x40 + i]); // slopes at 0x40
   }
 
   const uint16_t alpha0L = eepromData_[0xE0];

@@ -48,10 +48,14 @@ public:
   /** Convenience: update() then transmitTemperatures(). */
   void loop();
 
-  float ambientTemperatureC() const { return ambientTemperatureC_; }
+  float ambientTemperatureC() const {
+    return ambientTemperatureC_;
+  }
 
   /** Pointer to kPixelCount object temperatures in °C (valid until next update). */
-  const float* objectTemperaturesC() const { return objectTemperaturesC_; }
+  const float* objectTemperaturesC() const {
+    return objectTemperaturesC_;
+  }
 
   float objectTemperatureC(uint8_t index) const;
 
@@ -119,4 +123,4 @@ private:
   bool begun_;
 };
 
-#endif  // MLX90620_H_
+#endif // MLX90620_H_
