@@ -413,12 +413,14 @@ The modernization matches the bar set by super-sprint and vector-view when:
 
 ## 11. Suggested PR sequence
 
-| PR | Title | Depends on |
-|----|-------|------------|
-| 1 | Add modernization plan + doc stubs + `.gitignore` | — |
-| 2 | Fix `MLX90620` library + examples so they compile | 1 |
-| 3 | Reorganize tree + English renames | 2 |
-| 4 | PlatformIO + GitHub Actions CI | 3 |
-| 5 | clang-format / MISS_HIT bulk apply | 4 |
-| 6 | MATLAB `serialport` + package extraction | 3+ |
-| 7 | English REPORT + USER_GUIDE + polished README | 1 (can parallelize after PDF extract) |
+| PR | Title | Depends on | Status |
+|----|-------|------------|--------|
+| 1 | Add modernization plan + doc stubs + `.gitignore` | — | Done |
+| 2 | Fix `MLX90620` library + examples so they compile | 1 | Done |
+| 3 | Reorganize tree + English renames | 2 | Done |
+| 4 | PlatformIO + GitHub Actions CI | 3 | Done |
+| 5 | clang-format / MISS_HIT bulk apply | 4 | Pending |
+| 6 | MATLAB `serialport` migration (package already extracted) | 3+ | Pending |
+| 7 | English REPORT + USER_GUIDE + polished README | 1 (can parallelize after PDF extract) | Pending |
+
+Phases 0–4 from §6 are implemented on the modernization branch: scaffolding, library/sketch correctness, `firmware/` + `matlab/` layout, and PlatformIO CI that uploads `firmware-uno` artifacts (`*.hex`, `*.elf`, size report, hex preview).
