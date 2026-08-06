@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [master, 'cursor/**']
+  pull_request:
+    branches: [master]
+
+jobs:
+  firmware:
+    name: Firmware (PlatformIO)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/examples/realtime/.pio
+            firmware/examples/scan/.pio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/examples/**/platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Build realtime and scan
+        run: |
+          pio run -d firmware/examples/realtime
+          pio run -d firmware/examples/scan
+
+      - name: Collect firmware artifacts
+        run: |
+          chmod +x scripts/collect-artifacts.sh
+          ./scripts/collect-artifacts.sh
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-uno
+          path: |
+            artifacts/firmware/
+            artifacts/reports/
+          if-no-files-found: error
+
+  layout:
+    name: Layout sanity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required paths exist
+        run: |
+          set -euo pipefail
+          test -f firmware/lib/MLX90620/MLX90620.h
+          test -f firmware/lib/MLX90620/MLX90620.cpp
+          test -f firmware/examples/realtime/realtime.ino
+          test -f firmware/examples/scan/scan.ino
+          test -f firmware/examples/realtime/platformio.ini
+          test -f firmware/examples/scan/platformio.ini
+          test -f firmware/external/I2Cmaster/i2cmaster.h
+          test -f matlab/+mlx90620/imageProcess.m
+          test -f matlab/setupPaths.m
+          test -f LICENSE
+          test -f docs/BUILD.md
+          ! test -d arduino
+          ! test -d "matlab/Projet Temps Reel"
+          ! test -d "matlab/Projet Balayage"
+          ! find matlab -name 'Thumbs.db' | grep -q .
+          echo "Layout OK"

@@ -21,8 +21,8 @@ This project was carried out as part of the Supélec engineering curriculum (*Pr
 
 ```bash
 # Compile both firmware examples
-pio run -e realtime -e scan
-# or: make build
+make build
+# or: pio run -d firmware/examples/realtime && pio run -d firmware/examples/scan
 ```
 
 ```matlab

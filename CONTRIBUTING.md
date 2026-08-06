@@ -20,7 +20,7 @@ See [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) for the full modern
 
 1. **English everywhere in source code** — identifiers, comments, user-facing strings, and commit messages. Do not introduce new French identifiers.
 2. **Minimal, focused changes** — match surrounding style; avoid unrelated refactors in the same commit.
-3. **Keep CI green** — firmware must compile with PlatformIO (`pio run -e realtime -e scan`).
+3. **Keep CI green** — firmware must compile with PlatformIO (`make build` or `pio run -d firmware/examples/realtime`).
 4. **Preserve sensor maths and serial framing** unless a datasheet bug is proven. Document protocol changes in `docs/BUILD.md`.
 
 ## C / C++ (Arduino)
@@ -48,6 +48,6 @@ See [docs/MODERNIZATION_PLAN.md](docs/MODERNIZATION_PLAN.md) for the full modern
 
 ## Testing expectations
 
-- Firmware: `pio run -e realtime -e scan` (or `make build`).
+- Firmware: `make build` (PlatformIO per-example projects under `firmware/examples/`).
 - Optional: inspect uploaded CI artifacts (`.hex` + size report) on the workflow run.
 - Hardware-in-the-loop validation is encouraged when an MLX90620 is available but is not required for CI.
