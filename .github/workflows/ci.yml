@@ -54,6 +54,40 @@ jobs:
             artifacts/reports/
           if-no-files-found: error
 
+
+  lint:
+    name: Format and style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install MISS_HIT
+        run: pip install miss_hit
+
+      - name: Run format/lint checks
+        run: |
+          chmod +x scripts/lint.sh
+          ./scripts/lint.sh
+
+  host-tests:
+    name: Host unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and run host tests
+        run: make test-host
+
   layout:
     name: Layout sanity
     runs-on: ubuntu-latest
@@ -72,11 +106,20 @@ jobs:
           test -f firmware/examples/scan/platformio.ini
           test -f firmware/external/I2Cmaster/i2cmaster.h
           test -f matlab/+mlx90620/imageProcess.m
+          test -f matlab/+mlx90620/openSerial.m
           test -f matlab/setupPaths.m
+          test -f miss_hit.cfg
           test -f LICENSE
           test -f docs/BUILD.md
+          test -s docs/REPORT.md
+          test -s docs/USER_GUIDE.md
           ! test -d arduino
           ! test -d "matlab/Projet Temps Reel"
           ! test -d "matlab/Projet Balayage"
           ! find matlab -name 'Thumbs.db' | grep -q .
+          # Legacy MATLAB serial API must not return in first-party helpers/scripts.
+          if grep -R --include='*.m' -nE '\bserial\s*\(' matlab/+mlx90620 matlab/realtime matlab/scan; then
+            echo "Legacy serial() usage found" >&2
+            exit 1
+          fi
           echo "Layout OK"
