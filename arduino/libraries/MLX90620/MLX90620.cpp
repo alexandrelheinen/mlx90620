@@ -1,273 +1,305 @@
-/*
- * MLX90620.cpp
- * 13.05.2015
- * Authors: Alexandre Loeblein Heinen & Clyvian Ribeiro Borges
+/**
+ * @file MLX90620.cpp
+ * @brief Implementation of the MLX90620 Arduino sensor library.
+ *
+ * Temperature formulas follow the Melexis MLX90620 datasheet (ambient TA from
+ * PTAT / Vth / Kt coefficients; per-pixel TO with offset, TGC, emissivity, and
+ * alpha compensation). I2C traffic uses the vendored hardware TWI master.
  */
-
-/*
-* Attention! I commented out the alpha_ij array, so if you're going to compile the sketch you'll get for sure an error.
-* You should replace all 64 values with the alpha_ij calculated using the values stored in your MLX90620's EEPROM.
-* I suggest you to make an EEPROM dump, print it on the Serial port and store it in a file. From there, with the help of a spreadsheet (Libreoffice, Google Docs, Excel...) calculate your own alpha_ij values.
-* Please also pay attention to your emissivity value: since in my case it was equal to 1, to save SRAM i cut out that piece of calculation. You need to restore those lines if your emissivity value is not equal to 1.
-*/
 
 #include "MLX90620.h"
 
-MLX90620::MLX90620(int f)
-{
-  // data initialization
-  this->frequency = f;
-  read_EEPROM_MLX90620();
-  varInitialization();
-  config_MLX90620_Hz(this->frequency);
-  this->counter = 0;
+#include <math.h>
+
+MLX90620::MLX90620(int refreshRateHz)
+    : configReg_(0),
+      compensationPixel_(0),
+      ptat_(0),
+      ambientTemperatureC_(0.0f),
+      aCp_(0),
+      bCp_(0),
+      bIScale_(0),
+      emissivity_(1.0f),
+      kT1_(0.0f),
+      kT2_(0.0f),
+      vTh_(0),
+      tgc_(0),
+      refreshRateHz_(refreshRateHz),
+      frameCounter_(0),
+      begun_(false) {
+  for (uint16_t i = 0; i < kEepromSize; ++i) {
+    eepromData_[i] = 0;
+  }
+  for (uint8_t i = 0; i < kPixelCount; ++i) {
+    irData_[i] = 0;
+    objectTemperaturesC_[i] = 0.0f;
+    aIj_[i] = 0;
+    bIj_[i] = 0;
+    alphaIj_[i] = 0.0f;
+  }
 }
 
-MLX90620::~MLX90620()
-{
+void MLX90620::begin() {
+  i2c_init();
+  // Enable internal pull-ups on Uno A4 (SDA) and A5 (SCL).
+  PORTC = (1 << PORTC4) | (1 << PORTC5);
+  delay(5);
 
+  readEEPROM();
+  initialiseCalibration();
+  configure(refreshRateHz_);
+  frameCounter_ = 0;
+  begun_ = true;
 }
 
-void MLX90620::loop()
-{
-  delay(1000.0/this->frequency); // a little delay
+void MLX90620::update() {
+  if (!begun_) {
+    return;
+  }
 
-  // **************** IMAGE ACQUISITION **************************************
-   if(counter == 0)
-   {		                //TA refresh is slower than the pixel readings, I'll read the values and computate them not every loop.
-     readPTAT();        // PTAT stands for pro Proportional To Absolute Temperature
-     calculateTA();     // ambient's temperature
-     checkConfigReg();  // reconfigure if it's needed
-   }
+  // Match the sensor's slower ambient refresh: recompute TA every 16 frames.
+  if (frameCounter_ == 0) {
+    readPTAT();
+    calculateTA();
+    checkConfigReg();
+  }
 
-   counter++;
-   if(counter >= 16)
-      counter = 0;
+  frameCounter_++;
+  if (frameCounter_ >= 16) {
+    frameCounter_ = 0;
+  }
 
-   // read and calculate
-   readIR();              // gets the lecture from the sensor
-   readCPIX();
-   calculateTO();
-
-   // DATA TRANSMITION
-   transmitTemperatures();        // after we transmit all the image
+  readIR();
+  readCPIX();
+  calculateTO();
 }
 
-void MLX90620::calculateTA ()
-{
-    t_amb = (-k_t1 + sqrt(k_t1*k_t1 - 4.0*k_t2*(v_th - PTAT)))/(2.0*k_t2) + 25.0;
+void MLX90620::loop() {
+  // Pace acquisitions roughly to the configured refresh rate.
+  delay(static_cast<unsigned long>(1000.0f / static_cast<float>(refreshRateHz_ > 0 ? refreshRateHz_ : 1)));
+  update();
+  transmitTemperatures();
 }
 
-void MLX90620::calculateTO()
-{
-    float temp = 0;                                                             // auxiliare
-    float v_comp = CPIX - (a_cp +  b_cp/pow(2, b_i_scale)*(ta - 25.0));         // temperature gradient pixel
-    for (int i = 0; i < 64; i++)
-    {
-        temp = IRDATA[i] - (a_ij[i] +  b_ij[i]/pow(2, b_i_scale)*(ta - 25.0));  // offset compensation
-        temp = temp - tgc/32.0*v_comp;                                          // temperature gradient compensation
-        temp = temp/emissivity;                                                 // emissivity compensation
-        temperatures[i] = sqrt(sqrt( temp/alpha_ij[i] + pow((ta + 273.15), 4) )) - 273.15; // temperature calculation
-    }
+float MLX90620::objectTemperatureC(uint8_t index) const {
+  if (index >= kPixelCount) {
+    return NAN;
+  }
+  return objectTemperaturesC_[index];
 }
 
-void MLX90620::checkConfigReg()
-{
-    int CFG = readConfigReg();
-    byte CFG_MSB = (byte) (CFG >> 8);
-    if ((!CFG_MSB & 0x04) == 0x04)
-        config(this->frequency);
+uint8_t MLX90620::eepromByte(uint16_t index) const {
+  if (index >= kEepromSize) {
+    return 0;
+  }
+  return eepromData_[index];
 }
 
-void MLX90620::config(int Hz)
-{
-    byte Hz_LSB;
-    switch(Hz)
-    {
-      case 0:
-          Hz_LSB = B00001111;
-          break;
-      case 1:
-          Hz_LSB = B00001110;
-          break;
-      case 2:
-          Hz_LSB = B00001101;
-          break;
-      case 4:
-          Hz_LSB = B00001100;
-          break;
-      case 8:
-          Hz_LSB = B00001011;
-          break;
-      case 16:
-          Hz_LSB = B00001010;
-          break;
-      case 32:
-          Hz_LSB = B00001001;
-          break;
-      default:
-          Hz_LSB = B00001110;
-    }
-    i2c_start_wait(0xC0);
-    i2c_write(0x03);
-    i2c_write((byte)Hz_LSB-0x55);
-    i2c_write(Hz_LSB);
-    i2c_write(0x1F);
-    i2c_write(0x74);
-    i2c_stop();
+int16_t MLX90620::irData(uint8_t index) const {
+  if (index >= kPixelCount) {
+    return 0;
+  }
+  return irData_[index];
 }
 
-void MLX90620::readConfigReg()
-{
-    byte CFG_MSB, CFG_LSB;
-    i2c_start_wait(0xC0);
-    i2c_write(0x02);
-    i2c_write(0x92);
-    i2c_write(0x00);
-    i2c_write(0x01);
-    i2c_rep_start(0xC1);
-    CFG_LSB = i2c_readAck();
-    CFG_MSB = i2c_readAck();
-    i2c_stop();
-    this->CFG = (CFG_MSB << 8) + CFG_LSB;
+int MLX90620::scanFrameMarker(uint8_t rowIndex, uint8_t colIndex) {
+  return -(300 + 10 * static_cast<int>(rowIndex) + static_cast<int>(colIndex));
 }
 
-void MLX90620::readCPIX()
-{
-    byte CPIX_LSB, CPIX_MSB;
-    i2c_start_wait(0xC0);
-    i2c_write(0x02);
-    i2c_write(0x91);
-    i2c_write(0x00);
-    i2c_write(0x01);
-    i2c_rep_start(0xC1);
-    CPIX_LSB = i2c_readAck();
-    CPIX_MSB = i2c_readAck();
-    i2c_stop();
-    this->CPIX = (CPIX_MSB << 8) + CPIX_LSB;
+void MLX90620::transmitTemperatures() const {
+  for (uint8_t i = 0; i < kPixelCount; ++i) {
+    Serial.println(objectTemperaturesC_[i]);
+  }
 }
 
-byte MLX90620::getEEPROM(int ind)
-{
-  return EEPROM_DATA[ind];
+void MLX90620::transmitScanFrame(uint8_t rowIndex, uint8_t colIndex) const {
+  Serial.println(scanFrameMarker(rowIndex, colIndex));
+  transmitTemperatures();
 }
 
-void MLX90620::readEEPROM()
-{
-    i2c_start_wait(0xA0);
-    i2c_write(0x00);
-    i2c_rep_start(0xA1);
-    for(unsigned int i = 0; i < 256; i++)
-    {
-      this->EEPROM_DATA[i] = i2c_readAck();
-    }
-    i2c_stop();
-    writeTrimmingValue(this->EEPROM_DATA[0xF7]);
+void MLX90620::calculateTA() {
+  // Datasheet: solve quadratic in PTAT for ambient temperature (°C).
+  const float discriminant =
+      kT1_ * kT1_ - 4.0f * kT2_ * (static_cast<float>(vTh_) - static_cast<float>(ptat_));
+  ambientTemperatureC_ = (-kT1_ + sqrt(discriminant)) / (2.0f * kT2_) + 25.0f;
 }
 
-int getIRDATA(int ind)
-{
-  return this->IRDATA[ind];
+void MLX90620::calculateTO() {
+  const float ta = ambientTemperatureC_;
+  const float scale = pow(2.0f, static_cast<float>(bIScale_));
+  // Compensation pixel removes the temperature-gradient contribution (TGC path).
+  const float vComp =
+      static_cast<float>(compensationPixel_) -
+      (static_cast<float>(aCp_) + static_cast<float>(bCp_) / scale * (ta - 25.0f));
+
+  for (uint8_t i = 0; i < kPixelCount; ++i) {
+    float sample =
+        static_cast<float>(irData_[i]) -
+        (static_cast<float>(aIj_[i]) + static_cast<float>(bIj_[i]) / scale * (ta - 25.0f));
+    sample = sample - static_cast<float>(tgc_) / 32.0f * vComp;
+    sample = sample / emissivity_;
+    // Planck-style inversion using per-pixel alpha_ij (datasheet object formula).
+    objectTemperaturesC_[i] =
+        sqrt(sqrt(sample / alphaIj_[i] + pow(ta + 273.15f, 4.0f))) - 273.15f;
+  }
 }
 
-void MLX90620::readIR()
-{
-    byte PIX_LSB;
-    byte PIX_MSB;
-    i2c_start_wait(0xC0);
-    i2c_write(0x02);
-    i2c_write(0x00);
-    i2c_write(0x01);
-    i2c_write(0x40);
-    i2c_rep_start(0xC1);
-    for(int i = 0; i < 64; i++)
-    {
-        PIX_LSB = i2c_readAck();
-        PIX_MSB = i2c_readAck();
-        this->IRDATA[i] = (PIX_MSB << 8) + PIX_LSB;
-    }
-    i2c_stop();
+void MLX90620::checkConfigReg() {
+  readConfigReg();
+  const uint8_t configMsb = static_cast<uint8_t>(static_cast<uint16_t>(configReg_) >> 8);
+  // Bit 2 of the config MSB is the brown-out / POR flag; reconfigure when clear.
+  if ((configMsb & 0x04) == 0) {
+    configure(refreshRateHz_);
+  }
 }
 
-void MLX90620::readPTAT()
-{
-    byte PTAT_LSB, PTAT_MSB;
-    i2c_start_wait(0xC0);
-    i2c_write(0x02);
-    i2c_write(0x90);
-    i2c_write(0x00);
-    i2c_write(0x01);
-    i2c_rep_start(0xC1);
-    PTAT_LSB = i2c_readAck();
-    PTAT_MSB = i2c_readAck();
-    i2c_stop();
-    this->PTAT = ((unsigned int)PTAT_MSB << 8) + PTAT_LSB;
+void MLX90620::configure(int refreshRateHz) {
+  uint8_t hzLsb;
+  switch (refreshRateHz) {
+    case 0:
+      hzLsb = 0x0F;  // 0.5 Hz
+      break;
+    case 1:
+      hzLsb = 0x0E;
+      break;
+    case 2:
+      hzLsb = 0x0D;
+      break;
+    case 4:
+      hzLsb = 0x0C;
+      break;
+    case 8:
+      hzLsb = 0x0B;
+      break;
+    case 16:
+      hzLsb = 0x0A;
+      break;
+    case 32:
+      hzLsb = 0x09;
+      break;
+    default:
+      hzLsb = 0x0E;
+      break;
+  }
+
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x03);
+  i2c_write(static_cast<uint8_t>(hzLsb - 0x55));
+  i2c_write(hzLsb);
+  i2c_write(0x1F);
+  i2c_write(0x74);
+  i2c_stop();
 }
 
-void transmitTemperatures()
-{
-    for(int i=0; i<=63; i++)
-        Serial.println(this->temperatures[i]);
+void MLX90620::readConfigReg() {
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x02);
+  i2c_write(0x92);
+  i2c_write(0x00);
+  i2c_write(0x01);
+  i2c_rep_start(kAddrSensorRead);
+  const uint8_t lsb = i2c_readAck();
+  const uint8_t msb = i2c_readAck();
+  i2c_stop();
+  configReg_ = static_cast<int16_t>((static_cast<uint16_t>(msb) << 8) | lsb);
 }
 
-void writeTrimmingValue(byte val)
-{
-    i2c_start_wait(0xC0);
-    i2c_write(0x04);
-    i2c_write((byte)val-0xAA);
-    i2c_write(val);
-    i2c_write(0x56);
-    i2c_write(0x00);
-    i2c_stop();
+void MLX90620::readCPIX() {
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x02);
+  i2c_write(0x91);
+  i2c_write(0x00);
+  i2c_write(0x01);
+  i2c_rep_start(kAddrSensorRead);
+  const uint8_t lsb = i2c_readAck();
+  const uint8_t msb = i2c_readAck();
+  i2c_stop();
+  compensationPixel_ = static_cast<int16_t>((static_cast<uint16_t>(msb) << 8) | lsb);
 }
 
-void varInitialization(){
-  // those formulas can be found on page 14 of the datasheet
-   v_th = (EEPROM_DATA[0xDB] <<8) + EEPROM_DATA[0xDA];
-   k_t1 = ((EEPROM_DATA[0xDD] <<8) + EEPROM_DATA[0xDC])/1024.0;
-   k_t2 =((EEPROM_DATA[0xDF] <<8) + EEPROM_DATA[0xDE])/1048576.0;
+void MLX90620::readEEPROM() {
+  i2c_start_wait(kAddrEepromWrite);
+  i2c_write(0x00);
+  i2c_rep_start(kAddrEepromRead);
+  for (uint16_t i = 0; i < kEepromSize; ++i) {
+    // ACK all bytes including the last; the historical bring-up used readAck throughout.
+    eepromData_[i] = i2c_readAck();
+  }
+  i2c_stop();
+  writeTrimmingValue(eepromData_[0xF7]);
+}
 
-    // page 17
-   a_cp = EEPROM_DATA[0xD4];
-   if(a_cp > 127){
-     a_cp = a_cp - 256;
-   }
+void MLX90620::readIR() {
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x02);
+  i2c_write(0x00);
+  i2c_write(0x01);
+  i2c_write(0x40);
+  i2c_rep_start(kAddrSensorRead);
+  for (uint8_t i = 0; i < kPixelCount; ++i) {
+    const uint8_t lsb = i2c_readAck();
+    const uint8_t msb = i2c_readAck();
+    irData_[i] = static_cast<int16_t>((static_cast<uint16_t>(msb) << 8) | lsb);
+  }
+  i2c_stop();
+}
 
-   b_cp = EEPROM_DATA[0xD5];
-   if(b_cp > 127){
-     b_cp = b_cp - 256;
-   }
+void MLX90620::readPTAT() {
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x02);
+  i2c_write(0x90);
+  i2c_write(0x00);
+  i2c_write(0x01);
+  i2c_rep_start(kAddrSensorRead);
+  const uint8_t lsb = i2c_readAck();
+  const uint8_t msb = i2c_readAck();
+  i2c_stop();
+  ptat_ = (static_cast<uint16_t>(msb) << 8) | lsb;
+}
 
-   tgc = EEPROM_DATA[0xD8];
-   if(tgc > 127){
-     tgc = tgc - 256;
-   }
+void MLX90620::writeTrimmingValue(uint8_t value) {
+  i2c_start_wait(kAddrSensorWrite);
+  i2c_write(0x04);
+  i2c_write(static_cast<uint8_t>(value - 0xAA));
+  i2c_write(value);
+  i2c_write(0x56);
+  i2c_write(0x00);
+  i2c_stop();
+}
 
-   b_i_scale = EEPROM_DATA[0xD9];
+int16_t MLX90620::signExtend8(uint8_t value) {
+  return (value > 127) ? static_cast<int16_t>(value) - 256 : static_cast<int16_t>(value);
+}
 
-   emissivity = (((unsigned int)EEPROM_DATA[0xE5] << 8) + EEPROM_DATA[0xE4])/32768.0;
+void MLX90620::initialiseCalibration() {
+  // Datasheet ~p.14 — absolute temperature coefficients.
+  vTh_ = static_cast<int16_t>((static_cast<uint16_t>(eepromData_[0xDB]) << 8) | eepromData_[0xDA]);
+  kT1_ = static_cast<float>((static_cast<uint16_t>(eepromData_[0xDD]) << 8) | eepromData_[0xDC]) /
+         1024.0f;
+  kT2_ = static_cast<float>((static_cast<uint16_t>(eepromData_[0xDF]) << 8) | eepromData_[0xDE]) /
+         1048576.0f;
 
-   for(int i=0;i < 64; i++){
-     a_ij[i] = EEPROM_DATA[i]; // les valeurs des As commencent en 0x00
-     if(a_ij[i] > 127){
-       a_ij[i] = a_ij[i] - 256; // stored as 2's complement!
-     }
-     b_ij[i] = EEPROM_DATA[0x40+i]; // et celles des Bs, en 0x40
-     if(b_ij[i] > 127){
-       b_ij[i] = b_ij[i] - 256;  // stored as 2's complement!
-     }
-   }
+  // Datasheet ~p.17 — compensation pixel and scale.
+  aCp_ = signExtend8(eepromData_[0xD4]);
+  bCp_ = signExtend8(eepromData_[0xD5]);
+  tgc_ = signExtend8(eepromData_[0xD8]);
+  bIScale_ = static_cast<int16_t>(eepromData_[0xD9]);
+  emissivity_ =
+      static_cast<float>((static_cast<uint16_t>(eepromData_[0xE5]) << 8) | eepromData_[0xE4]) /
+      32768.0f;
 
-   // calculation of alphas
-   // the datasheet specifies where each value can be found on the EEPROM
-   unsigned int alpha0_H, alpha0_L, alpha0_S, delta_alpha_S, delta_alpha_ij; // we just name those variables to make the code cleaner
-   alpha0_L = EEPROM_DATA[0xE0];
-   alpha0_H = EEPROM_DATA[0xE1];
-   alpha0_S = EEPROM_DATA[0xE2];
-   delta_alpha_S = EEPROM_DATA[0xE3]; // because we could use directly the EEPROM_DATA
-   int c;
-   for (c=0; c < 64; c++) {
-     delta_alpha_ij = EEPROM_DATA[0x80 + c];
-     alpha_ij[c] = (256.0*alpha0_H + alpha0_L)/(pow(2, alpha0_S)) + delta_alpha_ij/(pow(2, delta_alpha_S)); // we can found this formula on datasheet's page 17
-   }
+  for (uint8_t i = 0; i < kPixelCount; ++i) {
+    aIj_[i] = signExtend8(eepromData_[i]);            // offsets at 0x00
+    bIj_[i] = signExtend8(eepromData_[0x40 + i]);     // slopes at 0x40
+  }
+
+  const uint16_t alpha0L = eepromData_[0xE0];
+  const uint16_t alpha0H = eepromData_[0xE1];
+  const uint16_t alpha0S = eepromData_[0xE2];
+  const uint16_t deltaAlphaS = eepromData_[0xE3];
+  for (uint8_t c = 0; c < kPixelCount; ++c) {
+    const uint16_t deltaAlphaIj = eepromData_[0x80 + c];
+    alphaIj_[c] = (256.0f * alpha0H + alpha0L) / pow(2.0f, static_cast<float>(alpha0S)) +
+                  deltaAlphaIj / pow(2.0f, static_cast<float>(deltaAlphaS));
+  }
 }
