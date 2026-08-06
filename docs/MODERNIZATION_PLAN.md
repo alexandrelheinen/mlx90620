@@ -7,8 +7,6 @@
 
 This document is the living plan for bringing the 2015 Arduino + MATLAB thermal-camera project up to the same documentation, build, and code-quality bar as the other modernized student projects. Phases are ordered by risk reduction; each phase should be independently mergeable.
 
----
-
 ## 0. Current state (audit summary)
 
 ### What the project is
@@ -33,8 +31,6 @@ These must be fixed early (Phase 1); they show the mid-2015 OOP migration was le
 4. **Sketches still mix old and new APIs.** `Sensor64_B.ino` includes `MLX90620.h` but still calls procedural helpers (`read_EEPROM_MLX90620`, `calculate_TA`, …) that are no longer (cleanly) provided by the class.
 5. **MATLAB uses the retired `serial` API** (`serial` / `fopen` / `fclose`). Modern MATLAB expects `serialport`.
 6. **Repo hygiene.** `Thumbs.db` files, spaces in directory names (`Projet Temps Reel`, `Projet Balayage`), nested sketch folders (`Sensor64_B/Sensor64_B.ino`), French identifiers and UI strings, no `.gitignore`.
-
----
 
 ## 1. Target repository layout
 
@@ -112,8 +108,6 @@ Reorganize into a clear, English, no-spaces tree. Keep Arduino library layout co
 
 Delete: `Thumbs.db`, empty nested sketch wrappers, dead commented-out blocks once behaviour is restored.
 
----
-
 ## 2. Code standards
 
 Mirror the spirit of `docs/CONTRIBUTING.md` in super-sprint and `CONTRIBUTING.md` + `.clang-format` in vector-view: **one written standard, enforced by tools, applied everywhere**.
@@ -180,8 +174,6 @@ Mirror the spirit of `docs/CONTRIBUTING.md` in super-sprint and `CONTRIBUTING.md
 - American or British English is fine; pick one and stay consistent (prefer the style already used in super-sprint READMEs)
 - Diagrams as Mermaid in Markdown where useful (architecture, serial protocol)
 
----
-
 ## 3. Build system
 
 ### 3.1 Firmware — PlatformIO (primary) + Arduino CLI (compat)
@@ -241,8 +233,6 @@ Extract ambient/object temperature math into pure functions callable from:
 
 Goal: CI can prove formula refactors without hardware.
 
----
-
 ## 4. CI/CD automations
 
 GitHub Actions on `push`/`pull_request` to `master` and `cursor/**`, following the two reference repos.
@@ -267,8 +257,6 @@ GitHub Actions on `push`/`pull_request` to `master` and `cursor/**`, following t
 - CI green required before merge
 - No committing `build/`, `.pio/`, MATLAB `*.asv`, OS junk
 
----
-
 ## 5. Documentation deliverables
 
 Align with super-sprint’s documentation table and vector-view’s honesty about history.
@@ -292,8 +280,6 @@ Align with super-sprint’s documentation table and vector-view’s honesty abou
 2. Translate to clear technical English; fix idiomatic/imprecise student phrasing the same way super-sprint’s `REPORT.md` did.
 3. Add a short “Modernization notes (2026)” section describing PlatformIO, serialport, and CI — without rewriting history.
 4. Reference current paths (`firmware/…`, `matlab/…`), not 2015 paths.
-
----
 
 ## 6. Phased execution
 
@@ -348,8 +334,6 @@ Align with super-sprint’s documentation table and vector-view’s honesty abou
 - Release workflow publishing `.hex` + library zip
 - Evaluate Wire migration / license finalization if still open
 
----
-
 ## 7. Serial protocol contract (document & keep stable)
 
 Document explicitly in `docs/BUILD.md` (today this is implicit in sketch + MATLAB code):
@@ -368,8 +352,6 @@ Document explicitly in `docs/BUILD.md` (today this is implicit in sketch + MATLA
 
 Any modernization must keep this contract or bump a version banner line at connect time.
 
----
-
 ## 8. Architecture (target)
 
 ```mermaid
@@ -387,16 +369,12 @@ flowchart LR
 - **Examples:** realtime loop vs servo mosaic scanning
 - **MATLAB package:** serial acquisition, filtering, UI
 
----
-
 ## 9. Out of scope (for this modernization)
 
 - Redesigning the optical/mechanical scan rig
 - Replacing MLX90620 with newer Melexis parts (e.g. MLX90640) — could be a future fork
 - Shipping compiled MATLAB standalone apps
 - Claiming live hardware demos in CI without attached hardware (use synthetic/demo mode instead)
-
----
 
 ## 10. Success criteria (definition of done)
 
@@ -408,8 +386,6 @@ The modernization matches the bar set by super-sprint and vector-view when:
 4. README + BUILD + REPORT + USER_GUIDE + AGENTS + LICENSE exist and are in English  
 5. Known Phase-1 correctness bugs are fixed; serial contract is documented  
 6. A contributor or agent can follow `docs/AGENTS.md` without reading the 2015 PDFs first  
-
----
 
 ## 11. Suggested PR sequence
 

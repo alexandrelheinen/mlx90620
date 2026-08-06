@@ -2,15 +2,12 @@
 
 > **Context:** After the 2026 firmware/docs modernization, the remaining paid dependency is MATLAB (plus Image Processing Toolbox for `medfilt2`). This note assesses impact, losses, UI choices, a modern architecture, and whether the migration is worth doing.
 
----
-
 ## 1. Verdict
 
 **Yes — migrate. It is worth it, and the functional risk is low.**
 
 > **Implementation status (2026):** Completed under `python/`. MATLAB sources archived at
 > `docs/archive/matlab-2015/`. Use `mlx90620 gui` / `mlx90620 capture`.
-
 
 The host side is a thin serial client + heatmap UI (~750 lines of `.m`, two GUIDE `.fig` files). It does **not** rely on distinctive MATLAB capabilities (Simulink, Control Toolbox, symbolic math, proprietary solvers). Everything it does is routine in the scientific Python stack, and Python removes a paid runtime from the project.
 
@@ -26,8 +23,6 @@ Recommended direction:
 | Tests | `pytest` on pure logic + demo-mode UI smoke (headless where possible) |
 
 Keep the **Arduino serial protocol unchanged** so firmware and Python can land independently.
-
----
 
 ## 2. What MATLAB actually does today
 
@@ -49,8 +44,6 @@ Keep the **Arduino serial protocol unchanged** so firmware and Python can land i
 3. GUIDE (legacy; App Designer would be another rewrite anyway)
 
 There is no hidden MATLAB-only algorithm in this repo.
-
----
 
 ## 3. Impact assessment
 
@@ -85,8 +78,6 @@ There is no hidden MATLAB-only algorithm in this repo.
 
 Firmware is untouched if the serial contract stays stable (`docs/BUILD.md`).
 
----
-
 ## 4. Is it “easy”? Serial and filtering specifically
 
 **Yes.**
@@ -96,8 +87,6 @@ Firmware is untouched if the serial contract stays stable (`docs/BUILD.md`).
 - **Heatmaps:** any of matplotlib / pyqtgraph / Dear PyGui can show a 16×4 (or upscaled) float grid with a colorbar and fixed clim (e.g. 15–40 °C).
 
 The hard part is not libraries — it is **not blocking the UI** while reading serial.
-
----
 
 ## 5. Better paradigm than a 1:1 GUIDE port
 
@@ -129,8 +118,6 @@ flowchart LR
   UI -->|filter params| Worker
 ```
 
----
-
 ## 6. UI library proposal
 
 ### Options compared
@@ -161,12 +148,10 @@ Use Matplotlib only for **offline** figures in docs/notebooks if desired — not
 
 - Left: raw frame heatmap  
 - Right: filtered heatmap  
-- Bottom/side: port, baud (read-only 9600), expansion \(n\), median radius \(r\), Start / Stop  
+- Bottom/side: port, baud (read-only 9600), expansion $n$, median radius $r$, Start / Stop  
 - Scan mode: extra tile coordinate label + mosaic view when complete  
 
 One app with a mode selector (`Realtime` | `Scan`) is better than two near-duplicate GUIDE figures.
-
----
 
 ## 7. Formatting and quality bar (Python)
 
@@ -200,8 +185,6 @@ scripts/                     # extend format.sh / lint.sh
 
 CI jobs: `ruff check`, `black --check`, `pytest`, keep firmware jobs as they are.
 
----
-
 ## 8. Proposed migration plan
 
 ### Phase A — Core library (no GUI)
@@ -234,8 +217,6 @@ CI jobs: `ruff check`, `black --check`, `pytest`, keep firmware jobs as they are
 - Type hints + mypy  
 - Packaged entry point (`pipx install .` / `uvx`)
 
----
-
 ## 9. Risk register
 
 | Risk | Mitigation |
@@ -244,8 +225,6 @@ CI jobs: `ruff check`, `black --check`, `pytest`, keep firmware jobs as they are
 | UI freeze copied from GUIDE | Enforce worker-thread rule in AGENTS/CONTRIBUTING |
 | SciPy median vs `medfilt2` visual delta | Side-by-side screenshot once on real data; accept minor border differences |
 | Qt install pain on some Linux | Document `PySide6` wheels; CI uses official wheels |
-
----
 
 ## 10. Recommendation summary
 

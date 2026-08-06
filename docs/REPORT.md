@@ -13,8 +13,6 @@
 **Supervisor:** José Picheral  
 **Campus:** Gif-sur-Yvette
 
----
-
 ## 1. Introduction
 
 This project analyses and brings up a thermal-camera system. Any body emits infrared
@@ -31,8 +29,6 @@ time offset between tiles.
 
 The report describes the components, the software developed on Arduino and MATLAB, the
 results obtained in realtime and scan modes, and perspectives for later work.
-
----
 
 ## 2. Components
 
@@ -75,8 +71,6 @@ MLX90620 sits on the Uno I2C bus (A4/A5). Because the sensor prefers **2.6 V** w
 Uno provides 3.3 V, the 2015 rig inserted a **1N4007** diode (~0.6 V drop) in series with
 the 3.3 V rail. See the archived PDF for the original wiring figures and prototype photos.
 
----
-
 ## 3. Work performed
 
 ### 3.1 MLX90620 library
@@ -103,12 +97,12 @@ on the bus).
 
 **Ambient temperature** (datasheet quadratic in PTAT):
 
-\[
-T_a = \frac{-K_{T1} + \sqrt{K_{T1}^2 - 4 K_{T2}[V_{TH} - PTAT]}}{2 K_{T2}} + 25^\circ C
-\]
+$$
+T_a = \frac{-K_{T1} + \sqrt{K_{T1}^2 - 4 K_{T2}[V_{TH} - PTAT]}}{2 K_{T2}} + 25^\circ\mathrm{C}
+$$
 
 **Object temperature** per pixel: offset compensation, TGC using CPIX, emissivity
-compensation, then Planck-style inversion with per-pixel \(\alpha_{ij}\) (see datasheet
+compensation, then Planck-style inversion with per-pixel $\alpha_{ij}$ (see datasheet
 and library comments in `MLX90620.cpp`). Results are transmitted as 64 ASCII lines over
 serial (`transmitTemperatures` / `transmitScanFrame`).
 
@@ -126,8 +120,8 @@ Firmware responsibilities:
 - in scan mode, step servos and emit a pose marker before each frame.
 
 **Scan framing.** Before each 64-value frame, firmware sends an “impossible” temperature
-marker \(c = -(300 + 10\,i + j)\) with \(c \le -300\). MATLAB recovers pose indices as
-\(C = -(c+300)\), column \(= C \bmod 10\), row \(= \lfloor C/10 \rfloor\).
+marker $c = -(300 + 10\,i + j)$ with $c \le -300$. MATLAB recovers pose indices as
+$C = -(c+300)$, column $= C \bmod 10$, row $= \lfloor C/10 \rfloor$.
 
 Examples live under `firmware/examples/realtime` and `firmware/examples/scan`.
 
@@ -139,23 +133,21 @@ displays results in GUIDE UIs.
 Observed noise is largely **salt-and-pepper**. A median filter preserves edges better than
 a linear blur, but is weak on a raw 16×4 grid. The pipeline therefore:
 
-1. **Upscales** by integer factor \(n\) via Kronecker replication (`kron`);  
-2. Applies a median filter of window \([m, m]\) (`medfilt2`).
+1. **Upscales** by integer factor $n$ via Kronecker replication (`kron`);  
+2. Applies a median filter of window $[m, m]$ (`medfilt2`).
 
-\[
+$$
 T' = F_m(E_n(T)), \quad E_n(T) = T \otimes \mathbf{1}_{n\times n}
-\]
+$$
 
 Shared helper: `mlx90620.imageProcess`. UIs: `matlab/realtime` and `matlab/scan`.
-
----
 
 ## 4. Results
 
 ### 4.1 Realtime
 
-With expansion \(n = 4\) and median radius \(m = 6\) (report figures; preferred tuning
-during design was often \(n = 4\), \(m = 4\)), a side view of a hand shows clearer contours
+With expansion $n = 4$ and median radius $m = 6$ (report figures; preferred tuning
+during design was often $n = 4$, $m = 4$), a side view of a hand shows clearer contours
 after filtering, and temporal sequences of a waving palm become readable.
 
 ### 4.2 Scan (balayage)
@@ -164,8 +156,6 @@ The MLX90620 is better suited to single-pose realtime imaging than to large mosa
 Scan tests (e.g. facing a person) did not yield a sharp assembled image; mechanical FOV
 stepping, thermal gradients from motors/electronics, and assembly registration remain
 difficult. Filtering still reduced outliers in the UI.
-
----
 
 ## 5. Conclusions and outlook
 
@@ -182,8 +172,6 @@ contamination, missing decoupling, and supply noise all affect measurements. A r
   limiting;
 - improve power integrity for the sensor rail.
 
----
-
 ## 6. Bibliography (from original report)
 
 1. ISO 20473:2007 — Optics and photonics — Spectral bands.  
@@ -192,10 +180,8 @@ contamination, missing decoupling, and supply noise all affect measurements. A r
 4. Weisstein, E. W. — Kronecker Product (MathWorld).  
 5. MathWorks — MATLAB GUI documentation.
 
-EEPROM address maps for \(T_a\) and \(T_{ij}\) coefficients appear in the PDF annexes
+EEPROM address maps for $T_a$ and $T_{ij}$ coefficients appear in the PDF annexes
 (Figures 10–11).
-
----
 
 ## Modernization notes (2026)
 
