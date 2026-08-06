@@ -204,8 +204,9 @@ EEPROM address maps for \(T_a\) and \(T_{ij}\) coefficients appear in the PDF an
 | `arduino/libraries/…`, French folder names | `firmware/lib`, `firmware/examples/{realtime,scan}` |
 | Procedural helpers + incomplete class | Coherent `MLX90620` C++ API |
 | Manual Arduino IDE copy | PlatformIO projects + CI hex artifacts |
-| MATLAB `serial` API | `serialport` via `mlx90620.openSerial` |
+| MATLAB GUIDE + Image Processing Toolbox | Python host (`python/`) with PySide6 + pyqtgraph |
 | French README / PDF-only docs | English README, BUILD, CONTRIBUTING, AGENTS, this report |
 
 Serial framing (9600 baud, 64 lines/frame, scan markers ≤ −300) is unchanged; see
-[`BUILD.md`](BUILD.md).
+[`BUILD.md`](BUILD.md). The MATLAB sources are preserved under
+[`archive/matlab-2015/`](archive/matlab-2015/).

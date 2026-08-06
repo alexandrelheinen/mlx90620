@@ -54,32 +54,70 @@ jobs:
             artifacts/reports/
           if-no-files-found: error
 
-
-  lint:
-    name: Format and style
+  python:
+    name: Python host
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install MISS_HIT
-        run: pip install miss_hit
+      - name: Install system libraries for offscreen Qt and clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format libegl1 libgl1 libxkbcommon0 libdbus-1-3
 
-      - name: Run format/lint checks
+      - name: Install package
+        run: python -m pip install -e "python/[dev]"
+
+      - name: Format and lint
         run: |
           chmod +x scripts/lint.sh
           ./scripts/lint.sh
 
+      - name: Unit tests
+        run: make test-python
+
+      - name: Demo capture artifact
+        run: |
+          mkdir -p artifacts/python
+          mlx90620 capture --demo --mode realtime --frames 1 \
+            --output artifacts/python/demo-realtime.png
+          mlx90620 capture --demo --mode scan --frames 4 \
+            --output artifacts/python/demo-scan.png
+
+      - name: Offscreen GUI smoke
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python - <<'PY'
+          from PySide6.QtCore import QTimer
+          from PySide6.QtWidgets import QApplication
+          from mlx90620.app.main_window import MainWindow
+          import sys
+          app = QApplication(sys.argv)
+          window = MainWindow(mode="realtime", demo=True)
+          window.show()
+          window.start_acquisition()
+          QTimer.singleShot(800, app.quit)
+          app.exec()
+          window.stop_acquisition()
+          print("gui smoke OK")
+          PY
+
+      - name: Upload Python artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-demo-frames
+          path: artifacts/python/
+          if-no-files-found: error
+
   host-tests:
-    name: Host unit tests
+    name: Host unit tests (C++)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -99,27 +137,18 @@ jobs:
         run: |
           set -euo pipefail
           test -f firmware/lib/MLX90620/MLX90620.h
-          test -f firmware/lib/MLX90620/MLX90620.cpp
           test -f firmware/examples/realtime/realtime.ino
           test -f firmware/examples/scan/scan.ino
-          test -f firmware/examples/realtime/platformio.ini
-          test -f firmware/examples/scan/platformio.ini
-          test -f firmware/external/I2Cmaster/i2cmaster.h
-          test -f matlab/+mlx90620/imageProcess.m
-          test -f matlab/+mlx90620/openSerial.m
-          test -f matlab/setupPaths.m
-          test -f miss_hit.cfg
+          test -f python/pyproject.toml
+          test -f python/src/mlx90620/cli.py
+          test -f python/src/mlx90620/app/main_window.py
+          test -d docs/archive/matlab-2015
+          test -f docs/python-migration-analysis.md
           test -f LICENSE
           test -f docs/BUILD.md
           test -s docs/REPORT.md
           test -s docs/USER_GUIDE.md
           ! test -d arduino
-          ! test -d "matlab/Projet Temps Reel"
-          ! test -d "matlab/Projet Balayage"
-          ! find matlab -name 'Thumbs.db' | grep -q .
-          # Legacy MATLAB serial API must not return in first-party helpers/scripts.
-          if grep -R --include='*.m' -nE '\bserial\s*\(' matlab/+mlx90620 matlab/realtime matlab/scan; then
-            echo "Legacy serial() usage found" >&2
-            exit 1
-          fi
+          ! test -d matlab
+          ! test -d "docs/archive/matlab-2015/Projet Temps Reel"
           echo "Layout OK"

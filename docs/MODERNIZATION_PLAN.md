@@ -403,7 +403,7 @@ flowchart LR
 The modernization matches the bar set by super-sprint and vector-view when:
 
 1. Layout is English, predictable, and free of junk files  
-2. C/C++ and MATLAB standards are written in `CONTRIBUTING.md` and enforced by formatters/linters in CI  
+2. C/C++ and Python standards are written in `CONTRIBUTING.md` and enforced by formatters/linters in CI  
 3. Firmware builds reproducibly via PlatformIO (and remains Arduino-IDE installable)  
 4. README + BUILD + REPORT + USER_GUIDE + AGENTS + LICENSE exist and are in English  
 5. Known Phase-1 correctness bugs are fixed; serial contract is documented  
@@ -426,10 +426,16 @@ The modernization matches the bar set by super-sprint and vector-view when:
 ### Completed through the second modernization PR
 
 - Phases 0–5 from §6 (scaffolding through documentation completion)
-- Tooling: `.clang-format`, `miss_hit.cfg`, `scripts/format.sh`, `scripts/lint.sh`, CI lint job
-- MATLAB: `serialport` helpers, `MLX90620_PORT` / `MLX90620_DEMO`, English UI strings
+- Tooling: `.clang-format`, `scripts/format.sh`, `scripts/lint.sh`, CI lint job
 - Docs: English `REPORT.md`, `USER_GUIDE.md`, README architecture diagram
 - Light hardening: host-side `tests/test_scan_marker.cpp` (`make test-host`)
+
+### Python host migration (done)
+
+- Analysis: [`python-migration-analysis.md`](python-migration-analysis.md)
+- Package: `python/` with CLI, PySide6 + pyqtgraph GUI, worker-thread acquisition
+- Tooling: Black + Ruff + pytest in CI; demo PNG artifacts
+- MATLAB tree archived at `docs/archive/matlab-2015/`
 
 ### Still optional (Phase 6)
 

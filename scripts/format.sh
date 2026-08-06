@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply project formatters (C/C++ via clang-format; MATLAB via MISS_HIT).
+# Apply project formatters (C/C++ via clang-format; Python via black + ruff).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,12 +16,18 @@ else
   echo "clang-format not found; skipping C/C++ format" >&2
 fi
 
-if command -v mh_style >/dev/null 2>&1; then
-  echo "Formatting MATLAB with mh_style --fix..."
-  mh_style --fix matlab/+mlx90620 matlab/realtime/cameraProcess.m \
-    matlab/realtime/cameraSave.m matlab/scan/cameraProcess.m matlab/setupPaths.m
+if command -v black >/dev/null 2>&1; then
+  echo "Formatting Python with black..."
+  (cd python && black src tests)
 else
-  echo "mh_style not found; skipping MATLAB format (pip install miss_hit)" >&2
+  echo "black not found; skipping (pip install -e 'python/[dev]')" >&2
+fi
+
+if command -v ruff >/dev/null 2>&1; then
+  echo "Fixing Python imports/lint with ruff..."
+  (cd python && ruff check --fix --unsafe-fixes src tests)
+else
+  echo "ruff not found; skipping" >&2
 fi
 
 echo "Done."

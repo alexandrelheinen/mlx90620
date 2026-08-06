@@ -18,20 +18,19 @@ else
   status=1
 fi
 
-if command -v mh_style >/dev/null 2>&1; then
-  echo "== mh_style =="
-  # Lint first-party helpers/scripts; GUIDE-generated interface.m stays excluded.
-  mh_style matlab/+mlx90620 matlab/realtime/cameraProcess.m \
-    matlab/realtime/cameraSave.m matlab/scan/cameraProcess.m matlab/setupPaths.m \
-    || status=1
-  if command -v mh_lint >/dev/null 2>&1; then
-    echo "== mh_lint =="
-    mh_lint matlab/+mlx90620 matlab/realtime/cameraProcess.m \
-      matlab/realtime/cameraSave.m matlab/scan/cameraProcess.m matlab/setupPaths.m \
-      || status=1
-  fi
+if command -v black >/dev/null 2>&1; then
+  echo "== black --check =="
+  (cd python && black --check src tests) || status=1
 else
-  echo "mh_style not found (pip install miss_hit)" >&2
+  echo "black not found (pip install -e 'python/[dev]')" >&2
+  status=1
+fi
+
+if command -v ruff >/dev/null 2>&1; then
+  echo "== ruff check =="
+  (cd python && ruff check src tests) || status=1
+else
+  echo "ruff not found" >&2
   status=1
 fi
 
